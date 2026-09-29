@@ -26,6 +26,7 @@ type Interface struct {
 type Device struct {
 	SN        string
 	Model     string
+	HwRev     string
 	Site      string
 	FW        string
 	CfgVer    int
@@ -36,7 +37,7 @@ type Device struct {
 	CPU       float64 // %
 	RAM       float64 // %
 	TmpFreeMB float64
-	RSSI      float64 // dBm, LTE only
+	RSSI      *float64 // dBm; nil when the model has no LTE
 	UptimeH   float64
 }
 

@@ -1,4 +1,8 @@
 // Command fleetd is the fleet console server.
+//
+//	fleetd [serve]   run the HTTP server (migrates first)
+//	fleetd migrate   apply database migrations
+//	fleetd seed      load the sample fleet into an empty database
 package main
 
 import (
@@ -13,11 +17,14 @@ import (
 	"time"
 
 	"github.com/voeunkh/gateway-fleet-frontend/internal/api"
+	"github.com/voeunkh/gateway-fleet-frontend/internal/seed"
+	"github.com/voeunkh/gateway-fleet-frontend/internal/store"
 	"github.com/voeunkh/gateway-fleet-frontend/web"
 )
 
 func main() {
-	if err := run(); err != nil {
+	slog.SetDefault(newLogger())
+	if err := run(os.Args[1:]); err != nil {
 		slog.Error("fleetd exited", "err", err)
 		os.Exit(1)
 	}
@@ -30,13 +37,58 @@ func newLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(os.Stderr, nil))
 }
 
-func run() error {
-	slog.SetDefault(newLogger())
-
-	addr := os.Getenv("FLEET_HTTP_ADDR")
-	if addr == "" {
-		addr = ":8080"
+func env(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
 	}
+	return def
+}
+
+func run(args []string) error {
+	cmd := "serve"
+	if len(args) > 0 {
+		cmd = args[0]
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	dbPath := env("FLEET_DB", "fleet.db")
+	switch cmd {
+	case "serve", "migrate", "seed":
+	default:
+		return fmt.Errorf("unknown command %q (want serve, migrate or seed)", cmd)
+	}
+	st, err := store.Open(dbPath)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = st.Close() }()
+	n, err := st.Migrate(ctx)
+	if err != nil {
+		return err
+	}
+	slog.Info("database ready", "path", dbPath, "migrations_applied", n)
+
+	switch cmd {
+	case "migrate":
+		return nil
+	case "seed":
+		now := time.Now()
+		if err := st.Seed(ctx, seed.Generate(now), now); err != nil {
+			return err
+		}
+		devices, err := st.CountDevices(ctx)
+		if err != nil {
+			return err
+		}
+		slog.Info("seeded sample fleet", "devices", devices)
+		return nil
+	}
+	return serve(ctx)
+}
+
+func serve(ctx context.Context) error {
+	addr := env("FLEET_HTTP_ADDR", ":8080")
 	static, err := web.Dist()
 	if err != nil {
 		return fmt.Errorf("open embedded web assets: %w", err)
@@ -46,9 +98,6 @@ func run() error {
 		Handler:           api.NewRouter(static),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 	errc := make(chan error, 1)
 	go func() {
 		slog.Info("listening", "addr", addr)

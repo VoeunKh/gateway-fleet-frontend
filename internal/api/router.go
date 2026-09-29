@@ -7,9 +7,11 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/voeunkh/gateway-fleet-frontend/internal/auth"
 	"github.com/voeunkh/gateway-fleet-frontend/internal/domain"
+	"github.com/voeunkh/gateway-fleet-frontend/internal/fleet"
 	"github.com/voeunkh/gateway-fleet-frontend/internal/store"
 )
 
@@ -25,6 +27,7 @@ type Config struct {
 type Server struct {
 	store        *store.Store
 	auth         *auth.Service
+	fleet        *fleet.Service
 	secureCookie bool
 	now          func() time.Time
 }
@@ -55,23 +58,49 @@ var WriteRoutes = []WriteRoute{
 	{"/api/alerts/{id}/ack", domain.PermAck},
 }
 
+// ReadRoute is a GET endpoint open to every signed-in role.
+type ReadRoute struct {
+	Pattern string
+	Handler http.HandlerFunc
+}
+
+func (s *Server) readRoutes() []ReadRoute {
+	return []ReadRoute{
+		{"/api/overview", s.overview},
+		{"/api/devices", s.devices},
+		{"/api/devices/{sn}", s.device},
+		{"/api/devices/{sn}/events", s.deviceEvents},
+		{"/api/devices/{sn}/metrics", s.deviceMetrics},
+		{"/api/firmware", s.firmware},
+		{"/api/packages", s.packages},
+		{"/api/config/{model}", s.config},
+		{"/api/alerts", s.alerts},
+		{"/api/rollouts", s.rollouts},
+	}
+}
+
 // NewRouter builds the HTTP router.
 func NewRouter(cfg Config) http.Handler {
 	now := cfg.Now
 	if now == nil {
 		now = time.Now
 	}
-	s := &Server{store: cfg.Store, auth: auth.NewService(cfg.Store, now), secureCookie: cfg.SecureCookie, now: now}
+	s := &Server{store: cfg.Store, auth: auth.NewService(cfg.Store, now), fleet: fleet.New(cfg.Store, now), secureCookie: cfg.SecureCookie, now: now}
 
 	r := chi.NewRouter()
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 	r.Route("/api", func(r chi.Router) {
+		// The overview board has one cell per gateway; gzip keeps it small at 10 000 devices.
+		r.Use(middleware.Compress(5, "application/json"))
 		r.Post("/login", s.login)
 		r.Group(func(r chi.Router) {
 			r.Use(s.authenticate, requireCSRF, s.audit)
 			r.Get("/session", s.session)
+			for _, rr := range s.readRoutes() {
+				r.Get(rr.Pattern[len("/api"):], rr.Handler)
+			}
 			r.Post("/logout", s.logout)
 			for _, wr := range WriteRoutes {
 				r.With(require(wr.Perm)).Post(wr.Pattern[len("/api"):], notImplemented)

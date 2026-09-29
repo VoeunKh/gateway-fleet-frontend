@@ -15,6 +15,7 @@ import (
 
 	"github.com/voeunkh/gateway-fleet-frontend/internal/auth"
 	"github.com/voeunkh/gateway-fleet-frontend/internal/domain"
+	"github.com/voeunkh/gateway-fleet-frontend/internal/seed"
 	"github.com/voeunkh/gateway-fleet-frontend/internal/store"
 )
 
@@ -38,6 +39,16 @@ type env struct {
 	store *store.Store
 	h     http.Handler
 	clock *clock
+}
+
+// newSeededEnv is newEnv plus the sample fleet, seeded at the test clock's time.
+func newSeededEnv(t *testing.T) *env {
+	t.Helper()
+	e := newEnv(t, false)
+	if err := e.store.Seed(context.Background(), seed.Generate(e.clock.now()), e.clock.now()); err != nil {
+		t.Fatal(err)
+	}
+	return e
 }
 
 // newEnv starts a router on a temp DB with one user per role (username = role).

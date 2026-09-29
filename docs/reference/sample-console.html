@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gateway Fleet Console (sample)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#E6EBEF; --panel:#FFFFFF; --ink:#16212C; --muted:#5A6A79; --line:#CDD6DD;
+  --rail:#14304B; --rail-ink:#D6E2EC; --rail-muted:#8FA8BE; --sel:#E9F0F6; --accent:#1D5E97; --accent-ink:#FFFFFF;
+  --ok:#23845A; --warn:#C98414; --bad:#BF3A2B; --off:#8B98A4; --busy:#2F7FC1; --idle:#C3CDD5;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1620; --panel:#16212C; --ink:#E3EAF0; --muted:#93A3B2; --line:#283746;
+    --rail:#0A1520; --rail-ink:#C8D5E1; --rail-muted:#6F889E; --sel:#1C2B39; --accent:#6BA6DB; --accent-ink:#0A1520;
+    --ok:#3DBA82; --warn:#E3A33B; --bad:#E36A5B; --off:#6D7B88; --busy:#5AA2E0; --idle:#34444F;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1620; --panel:#16212C; --ink:#E3EAF0; --muted:#93A3B2; --line:#283746;
+  --rail:#0A1520; --rail-ink:#C8D5E1; --rail-muted:#6F889E; --sel:#1C2B39; --accent:#6BA6DB; --accent-ink:#0A1520;
+  --ok:#3DBA82; --warn:#E3A33B; --bad:#E36A5B; --off:#6D7B88; --busy:#5AA2E0; --idle:#34444F;
+}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font:15px/1.45 Barlow,"Segoe UI",system-ui,-apple-system,sans-serif}
+.mono{font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:.84em;letter-spacing:-.01em}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.app{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100%}
+.rail{background:var(--rail);color:var(--rail-ink);padding:22px 14px 18px;display:flex;flex-direction:column;gap:22px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;letter-spacing:.01em;padding:0 6px}
+.brand svg{flex:none}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav button{all:unset;display:flex;justify-content:space-between;align-items:center;padding:9px 10px;border-radius:6px;cursor:pointer;color:var(--rail-ink);font-weight:500}
+.nav button:hover{background:rgba(255,255,255,.06)}
+.nav button[aria-current="page"]{background:rgba(255,255,255,.12);color:#fff;font-weight:600}
+.nav button:focus-visible{outline:2px solid var(--rail-ink)}
+.count{background:var(--bad);color:#fff;border-radius:9px;font-size:12px;font-weight:700;padding:0 7px;min-width:20px;text-align:center}
+.who{margin-top:auto;display:flex;flex-direction:column;gap:6px;padding:0 6px;font-size:13px;color:var(--rail-muted)}
+.who select{background:rgba(255,255,255,.08);color:var(--rail-ink);border:1px solid rgba(255,255,255,.18);border-radius:6px;padding:7px 8px}
+.who select option{color:#16212C}
+.linkbtn{all:unset;cursor:pointer;color:var(--rail-muted);font-size:13px;text-decoration:underline;text-underline-offset:3px}
+
+main{padding:26px 28px 60px;max-width:1240px;width:100%}
+h1{font-size:26px;line-height:1.15;margin:0 0 4px;font-weight:700;letter-spacing:-.01em}
+h2{font-size:17px;margin:0 0 10px;font-weight:700}
+h3{font-size:15px;margin:0 0 8px;font-weight:600}
+.sub{color:var(--muted);margin:0 0 20px;max-width:70ch}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 18px;margin-bottom:16px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.grid2 > .panel{margin-bottom:0}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.spacer{flex:1}
+
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-weight:600;color:var(--muted);font-size:13px;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+tr.click{cursor:pointer}
+tr.click:hover td{background:var(--sel)}
+td.nowrap{white-space:nowrap}
+dl.kv{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}
+dl.kv dt{color:var(--muted)}
+dl.kv dd{margin:0}
+
+.led{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 22%,transparent);vertical-align:middle;margin-right:8px;flex:none}
+.healthy{--c:var(--ok)} .warning{--c:var(--warn)} .critical{--c:var(--bad)} .offline{--c:var(--off)}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;font-weight:600;background:var(--sel);color:var(--ink);white-space:nowrap}
+.tag.ok{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.tag.warn{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.tag.bad{background:color-mix(in srgb,var(--bad) 16%,transparent);color:var(--bad)}
+.tag.busy{background:color-mix(in srgb,var(--busy) 16%,transparent);color:var(--busy)}
+
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:7px 13px;cursor:pointer;font-weight:600;white-space:nowrap}
+.btn:hover:not(:disabled){border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{color:var(--bad)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.sm{padding:4px 10px;font-size:13px}
+input[type=text],input[type=number],input[type=search],select,textarea{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 9px;max-width:100%}
+textarea{width:100%;min-height:260px;font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:13px;line-height:1.5;tab-size:4}
+label.field{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);font-weight:500}
+label.field > *{color:var(--ink);font-size:15px}
+.back{all:unset;cursor:pointer;color:var(--accent);font-weight:600;margin-bottom:12px;display:inline-block}
+
+/* The fleet board: one cell per gateway */
+.board{display:flex;flex-direction:column;gap:14px}
+.board-row{display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:start}
+.board-row .lbl{font-weight:600;padding-top:1px}
+.board-row .lbl span{display:block;font-weight:400;color:var(--muted);font-size:13px}
+.cells{display:flex;flex-wrap:wrap;gap:5px}
+.cell{width:22px;height:22px;border-radius:4px;border:0;padding:0;background:var(--c,var(--idle));cursor:pointer;position:relative}
+.cell:hover{transform:scale(1.15)}
+.cell.healthy{--c:var(--ok)} .cell.warning{--c:var(--warn)} .cell.critical{--c:var(--bad)} .cell.offline{--c:var(--off)}
+.cell.s-queued{--c:var(--idle)}
+.cell.s-downloading,.cell.s-verifying,.cell.s-flashing,.cell.s-rebooting,.cell.s-checking{--c:var(--busy);animation:blink 1s ease-in-out infinite}
+.cell.s-success{--c:var(--ok)} .cell.s-rolledback{--c:var(--warn)} .cell.s-bricked{--c:var(--bad)}
+.cell.s-skipped,.cell.s-deferred{background:repeating-linear-gradient(45deg,var(--idle) 0 3px,transparent 3px 6px);outline:1px solid var(--idle);outline-offset:-1px}
+.cell .pct{position:absolute;left:0;bottom:0;height:3px;background:#fff;opacity:.8;border-radius:0 0 0 4px}
+@keyframes blink{50%{opacity:.45}}
+@media (prefers-reduced-motion: reduce){.cell{animation:none!important}.cell:hover{transform:none}}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted);margin-top:12px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px;background:var(--c)}
+
+.waves{display:flex;gap:18px;flex-wrap:wrap;margin:12px 0}
+.wave{border-left:3px solid var(--line);padding-left:10px}
+.wave.now{border-color:var(--busy)}
+.wave.done{border-color:var(--ok)}
+.wave .wl{font-size:13px;color:var(--muted);margin-bottom:6px}
+.stat{display:flex;gap:18px;flex-wrap:wrap;font-size:14px}
+.stat b{font-size:18px;display:block;line-height:1.1}
+.note{border-left:3px solid var(--warn);padding:8px 12px;background:color-mix(in srgb,var(--warn) 9%,transparent);border-radius:0 6px 6px 0;margin:10px 0;font-size:14px}
+.note.bad{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 9%,transparent)}
+.bars{display:flex;flex-direction:column;gap:10px}
+.bar{display:flex;height:14px;border-radius:4px;overflow:hidden;background:var(--idle)}
+.bar span{display:block;height:100%}
+.spark{display:block}
+pre.code{margin:0;background:var(--sel);border-radius:6px;padding:12px;overflow-x:auto;font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.55}
+pre.code .add{background:color-mix(in srgb,var(--ok) 20%,transparent);display:block}
+pre.code .del{background:color-mix(in srgb,var(--bad) 18%,transparent);display:block;text-decoration:line-through;opacity:.8}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{all:unset;cursor:pointer;padding:6px 14px;font-weight:600;font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.vlist{display:flex;flex-direction:column;gap:6px}
+.vitem{all:unset;cursor:pointer;display:block;padding:8px 10px;border-radius:6px;border:1px solid var(--line)}
+.vitem[aria-pressed="true"]{border-color:var(--accent);background:var(--sel)}
+.vitem:focus-visible{outline:2px solid var(--accent)}
+.toasts{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px;z-index:10;max-width:min(420px,calc(100% - 32px))}
+.toast{background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:7px;font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.empty{padding:22px;text-align:center;color:var(--muted)}
+
+@media (max-width: 820px){
+  .app{grid-template-columns:1fr}
+  .rail{padding:12px 12px 8px;gap:10px}
+  .rail-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .nav{flex-direction:row;overflow-x:auto;gap:4px;padding-bottom:4px;scrollbar-width:none}
+  .nav::-webkit-scrollbar{display:none}
+  .nav button{white-space:nowrap;gap:6px;flex:none}
+  .who{margin:0;flex-direction:row;align-items:center;padding:0}
+  .who .lab,.who .linkbtn{display:none}
+  main{padding:18px 14px 70px}
+  .grid2{grid-template-columns:1fr}
+  .board-row{grid-template-columns:1fr;gap:6px}
+  h1{font-size:22px}
+}
+@media (min-width: 821px){ .rail-top{display:contents} }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="rail">
+    <div class="rail-top">
+      <div class="brand">
+        <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect x="2" y="9" width="22" height="13" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><line x1="7" y1="9" x2="4" y2="2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="19" y1="9" x2="22" y2="2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="8" cy="15.5" r="1.8" fill="#3DBA82"/><circle cx="13" cy="15.5" r="1.8" fill="#E3A33B"/></svg>
+        Gateway Fleet
+      </div>
+      <div class="who">
+        <label class="lab" for="role">Signed in as</label>
+        <select id="role" aria-label="Role">
+          <option value="admin">Admin</option>
+          <option value="release">Release engineer</option>
+          <option value="viewer">Viewer</option>
+        </select>
+        <button class="linkbtn" data-act="reset">Reset sample data</button>
+      </div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+  </aside>
+  <main id="main"></main>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+/* ---------- Static model catalogue ---------- */
+const MODELS = [
+  {id:'GW-100', name:'Indoor LoRa', soc:'MediaTek MT7621A', arch:'mipsel_24kc', ram:128, flash:16, os:'OpenWrt 23.05.4',
+   ifaces:[['eth','lan1'],['eth','wan'],['wifi','wlan0'],['lora','lora0']]},
+  {id:'GW-200', name:'Outdoor LTE', soc:'MediaTek MT7628AN', arch:'mipsel_24kc', ram:128, flash:32, os:'OpenWrt 23.05.4',
+   ifaces:[['eth','wan'],['lte','wwan0'],['lora','lora0'],['wifi','wlan0'],['rs485','ttyS1']]},
+  {id:'GW-300', name:'Industrial', soc:'Qualcomm IPQ4019', arch:'arm_cortex-a7', ram:256, flash:128, os:'OpenWrt 23.05.4',
+   ifaces:[['eth','lan1'],['eth','lan2'],['eth','lan3'],['eth','wan'],['lte','wwan0'],['ble','hci0'],['usb','usb1']]}
+];
+const IFNAME = {eth:'Ethernet', wifi:'Wi-Fi', lte:'LTE', lora:'LoRa', ble:'Bluetooth LE', rs485:'RS485', usb:'USB'};
+const CAN = {admin:['rollout','config','packages','firmware','remote','ack'], release:['rollout','config','packages','firmware'], viewer:[]};
+const ROLE_NAME = {admin:'Admin', release:'Release engineer', viewer:'Viewer'};
+const STORE = 'gwfleet-sample-v1';
+const TERMINAL = new Set(['success','rolledback','bricked','skipped','deferred']);
+const STATE_LABEL = {queued:'Queued', downloading:'Downloading', verifying:'Checking image', flashing:'Running sysupgrade', rebooting:'Rebooting',
+  checking:'Health check', success:'Updated', rolledback:'Rolled back', bricked:'No response, needs on-site recovery', skipped:'Skipped by pre-check', deferred:'Offline, deferred'};
+
+/* ---------- Seeded random for repeatable sample data ---------- */
+let seed = 1;
+const rnd = () => (seed = (Math.imul(seed,1664525) + 1013904223) >>> 0) / 4294967296;
+const pick = a => a[Math.floor(rnd()*a.length)];
+const hex = n => Array.from({length:n}, () => Math.floor(rnd()*16).toString(16)).join('').toUpperCase();
+const digits = n => Array.from({length:n}, () => Math.floor(rnd()*10)).join('');
+const mac = () => '70:B3:D5:' + [hex(2),hex(2),hex(2)].join(':');
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function ifId(t){
+  if (t==='eth'||t==='wifi'||t==='ble') return 'MAC ' + mac();
+  if (t==='lte') return 'IMEI ' + digits(15) + ', ICCID 89' + digits(17);
+  if (t==='lora') return 'EUI ' + hex(16);
+  if (t==='rs485') return '/dev/ttyS1';
+  return 'USB 2.0 host';
+}
+
+function uciTemplate(m, heartbeat, ntp){
+  const has = t => m.ifaces.some(i => i[0]===t);
+  let s = `config gateway 'main'\n\toption serial '{{device.sn}}'\n\toption site '{{site.name}}'\n\toption heartbeat '${heartbeat}'\n\toption mqtt_host 'mqtt.fleet.example.com'\n\toption mqtt_port '8883'\n`;
+  if (ntp) s += `\nconfig timeserver 'ntp'\n\tlist server '{{site.ntp_server}}'\n\tlist server 'pool.ntp.org'\n`;
+  if (has('lora')) s += `\nconfig lora 'concentrator'\n\toption region 'AS923'\n\toption server 'lns.example.com'\n\toption port_up '1700'\n\toption port_down '1700'\n`;
+  if (has('lte')) s += `\nconfig interface 'wwan'\n\toption proto 'qmi'\n\toption apn '{{site.apn}}'\n\toption pincode '{{secret.sim_pin}}'\n`;
+  if (has('rs485')) s += `\nconfig modbus 'rtu'\n\toption device '/dev/ttyS1'\n\toption baudrate '9600'\n\toption parity 'none'\n`;
+  return s;
+}
+
+function initData(){
+  seed = 20260920;
+  const now = Date.now();
+  const sites = ['Plant A','Plant B','Warehouse 3','Solar Farm North','Head office','Cold Store 2'];
+  const firmware = [];
+  MODELS.forEach(m => {
+    const p = m.id.replace('-','').toLowerCase();
+    [['1.1.0','stable','2026-05-12',.02],['1.2.0','stable','2026-07-28',.03],['1.3.0-beta.1','beta','2026-09-15',.30]].forEach(([v,ch,d,fr]) => {
+      const size = (m.id==='GW-300' ? 11.6 : 7.4) + (v==='1.3.0-beta.1'?0.5:v==='1.2.0'?0.2:0);
+      firmware.push({model:m.id, version:v, channel:ch, released:d, failRate:fr, sizeMB:+size.toFixed(1),
+        file:`${p}-openwrt-23.05.4-${v}-squashfs-sysupgrade.bin`, sha:hex(64), blocked:false});
+    });
+  });
+  const packages = [
+    {name:'gw-agent', version:'0.9.2', prev:'0.9.1', channel:'stable', models:['GW-100','GW-200','GW-300'], desc:'Management agent'},
+    {name:'lora-pkt-fwd', version:'4.0.2', prev:'4.0.1', channel:'stable', models:['GW-100','GW-200'], desc:'LoRa packet forwarder'},
+    {name:'modbus-bridge', version:'1.4.0', prev:'1.3.2', channel:'stable', models:['GW-200'], desc:'RS485 Modbus to MQTT'},
+    {name:'lte-watchdog', version:'1.1.0', prev:'1.0.4', channel:'stable', models:['GW-200','GW-300'], desc:'Restarts the LTE link when it drops'},
+    {name:'ble-scanner', version:'0.3.1', prev:'0.3.0', channel:'beta', models:['GW-300'], desc:'Bluetooth LE beacon scanner'}
+  ];
+  const configs = {};
+  MODELS.forEach(m => {
+    configs[m.id] = {desired:2, versions:[
+      {v:1, by:'Release engineer', at:'2026-06-03', note:'Initial template', text:uciTemplate(m,60,false)},
+      {v:2, by:'Release engineer', at:'2026-08-19', note:'Heartbeat 60 s to 30 s, add NTP servers', text:uciTemplate(m,30,true)}
+    ]};
+  });
+  const devices = [];
+  MODELS.forEach((m, mi) => {
+    for (let i = 0; i < 20; i++){
+      const code = m.id.replace('-','');
+      const sn = `${code}-${pick(['2431','2438','2507','2519'])}-${String(mi*100+i+1).padStart(5,'0')}`;
+      const online = rnd() > .08;
+      const temp = Math.round(44 + rnd()*26 + (rnd() < .07 ? 16 : 0));
+      const pk = {};
+      packages.filter(p => p.models.includes(m.id)).forEach(p => pk[p.name] = rnd() < .75 ? p.version : p.prev);
+      devices.push({
+        sn, model:m.id, hwRev:pick(['A1','A2','B0']), site:pick(sites),
+        fw: rnd() < .55 ? '1.2.0' : '1.1.0', cfgVer: rnd() < .82 ? 2 : 1, online,
+        cpu: Math.round(6 + rnd()*40), ram: Math.round(34 + rnd()*44),
+        tmpFree: +(rnd() < .08 ? 4 + rnd()*2 : m.ram/4 + rnd()*m.ram/5).toFixed(1),
+        temp, uptimeH: Math.round(rnd()*900),
+        rssi: m.ifaces.some(x => x[0]==='lte') ? -Math.round(62 + rnd()*44) : null,
+        ifaces: m.ifaces.map(([t,n]) => ({type:t, name:n, id:ifId(t), up: online && rnd() > .05})),
+        pkgs: pk, temps: Array.from({length:30}, () => temp + Math.round((rnd()-.5)*6)),
+        lastSeen: online ? now - Math.round(rnd()*50e3) : now - Math.round((20 + rnd()*300)*60e3),
+        hist: [{t: now - 86400e3*(30 + Math.round(rnd()*120)), msg:'Provisioned with factory certificate'}]
+      });
+    }
+  });
+  return {
+    role:'admin', view:'overview', sel:null, logs:null,
+    filter:{q:'', model:'', status:''},
+    form:{model:'GW-200', fw:'1.2.0', waves:'1,10,50,100', thr:10},
+    cfgModel:'GW-200', cfgSel:2, editing:null,
+    devices, firmware, packages, configs, rollouts:[], alerts:[], seq:1
+  };
+}
+
+/* ---------- State and persistence ---------- */
+let S;
+function load(){
+  try {
+    const raw = localStorage.getItem(STORE);
+    if (raw){
+      S = JSON.parse(raw);
+      S.rollouts.forEach(r => { if (r.state==='running'||r.state==='soaking'){ r.state='paused'; r.reason='Paused because the page was reloaded.'; } });
+      S.logs = null; S.editing = null;
+      return;
+    }
+  } catch(e){}
+  S = initData();
+  checkAlerts();
+}
+let saveT = null;
+function save(){ clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch(e){} }, 600); }
+
+/* ---------- Helpers ---------- */
+const can = a => CAN[S.role].includes(a);
+const dev = sn => S.devices.find(d => d.sn===sn);
+const model = id => MODELS.find(m => m.id===id);
+const fwOf = (m,v) => S.firmware.find(f => f.model===m && f.version===v);
+function health(d){
+  if (!d.online) return 'offline';
+  if (d.temp >= 80 || d.ram >= 90) return 'critical';
+  if (d.temp >= 72 || d.ram >= 80 || d.tmpFree < 8) return 'warning';
+  return 'healthy';
+}
+const HEALTH_LABEL = {healthy:'Healthy', warning:'Warning', critical:'Critical', offline:'Offline'};
+function ago(t){
+  const s = Math.max(0, (Date.now()-t)/1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.round(s/60) + ' min ago';
+  if (s < 86400) return Math.round(s/3600) + ' h ago';
+  return Math.round(s/86400) + ' d ago';
+}
+const when = t => new Date(t).toLocaleString(undefined, {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+function hist(d, msg){ d.hist.unshift({t:Date.now(), msg}); if (d.hist.length > 40) d.hist.pop(); }
+function toast(msg){
+  const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 4200);
+}
+const deny = a => can(a) ? '' : `disabled title="Your role (${ROLE_NAME[S.role]}) can't do this"`;
+const drift = d => d.cfgVer !== S.configs[d.model].desired;
+function render_vars(d, text){
+  const slug = d.site.toLowerCase().replace(/[^a-z0-9]+/g,'-');
+  return text.replace(/\{\{device\.sn\}\}/g, d.sn).replace(/\{\{site\.name\}\}/g, d.site)
+    .replace(/\{\{site\.ntp_server\}\}/g, `ntp.${slug}.local`).replace(/\{\{site\.apn\}\}/g, 'iot.carrier.apn')
+    .replace(/\{\{secret\.[a-z_]+\}\}/g, '••••••');
+}
+
+/* ---------- Alerts ---------- */
+function raise(d, kind, sev, msg){
+  if (S.alerts.some(a => a.sn===d.sn && a.kind===kind && a.state!=='resolved')) return;
+  S.alerts.unshift({id:S.seq++, sn:d.sn, kind, sev, msg, at:Date.now(), state:'open'});
+}
+function resolve(d, kind){
+  S.alerts.forEach(a => { if (a.sn===d.sn && a.kind===kind && a.state!=='resolved'){ a.state='resolved'; a.resolvedAt=Date.now(); } });
+}
+function checkAlerts(){
+  S.devices.forEach(d => {
+    if (!d.online && Date.now()-d.lastSeen > 10*60e3 && !d.bricked) raise(d,'offline','critical','Offline for more than 10 minutes');
+    else if (d.online) resolve(d,'offline');
+    if (d.online && d.temp >= 80) raise(d,'temp','critical',`Temperature ${d.temp} °C (limit 80 °C)`); else resolve(d,'temp');
+    if (d.online && d.ram >= 90) raise(d,'ram','warning',`RAM use ${d.ram}% (limit 90%)`); else resolve(d,'ram');
+  });
+  if (S.alerts.length > 200) S.alerts = S.alerts.filter(a => a.state!=='resolved').concat(S.alerts.filter(a => a.state==='resolved').slice(0,60));
+}
+const openAlerts = () => S.alerts.filter(a => a.state!=='resolved');
+
+/* ---------- Rollout simulation (OpenWrt sysupgrade) ---------- */
+function startRollout(){
+  const f = S.form;
+  const fw = fwOf(f.model, f.fw);
+  if (!fw || fw.blocked){ toast('Choose a firmware version that is not blocked.'); return; }
+  const pcts = f.waves.split(',').map(x => parseFloat(x)).filter(x => x > 0 && x <= 100);
+  if (!pcts.length || pcts[pcts.length-1] !== 100){ toast('Waves must be percentages ending in 100, for example 1,10,50,100.'); return; }
+  const targets = S.devices.filter(d => d.model===f.model && d.fw!==f.fw && !d.bricked);
+  if (!targets.length){ toast(`All ${f.model} gateways already run ${f.fw}.`); return; }
+  if (S.rollouts.some(r => r.model===f.model && ['running','soaking','paused'].includes(r.state))){ toast(`A rollout for ${f.model} is already active. Finish or abort it first.`); return; }
+  const healthyFirst = targets.slice().sort((a,b) => (health(a)==='healthy'?0:1) - (health(b)==='healthy'?0:1));
+  let prev = 0;
+  const counts = pcts.map(p => { const c = Math.max(prev+1, Math.ceil(targets.length*p/100)); prev = Math.min(c, targets.length); return prev; });
+  const uniq = counts.filter((c,i) => i===0 || c > counts[i-1]);
+  const r = {id:'R-' + String(S.seq++).padStart(3,'0'), model:f.model, fw:f.fw, thr:+f.thr || 10, created:Date.now(), by:ROLE_NAME[S.role],
+    counts:uniq, wave:0, state:'running', soak:0, reason:'', devs: healthyFirst.map(d => ({sn:d.sn, st:'queued', pct:0, t:0, from:d.fw}))};
+  S.rollouts.unshift(r);
+  toast(`Rollout ${r.id} started: ${targets.length} ${f.model} gateways to ${f.fw}.`);
+  save(); render();
+}
+function waveSlice(r, i){ return r.devs.slice(i===0?0:r.counts[i-1], r.counts[i]); }
+function stepDevice(r, x){
+  const d = dev(x.sn), fw = fwOf(r.model, r.fw);
+  switch (x.st){
+    case 'queued':
+      if (!d.online){ x.st='deferred'; hist(d,`Update to ${r.fw} deferred: gateway offline`); }
+      else if (d.tmpFree < fw.sizeMB){ x.st='skipped'; x.note=`/tmp has ${d.tmpFree} MB free, image needs ${fw.sizeMB} MB`; hist(d,`Update to ${r.fw} skipped by pre-check: ${x.note}`); }
+      else { x.st='downloading'; hist(d,`Downloading ${fw.file}`); }
+      break;
+    case 'downloading': x.pct = Math.min(100, x.pct + 14 + Math.random()*34); if (x.pct >= 100) x.st='verifying'; break;
+    case 'verifying': x.st='flashing'; hist(d,'Image passed SHA-256, signature and sysupgrade -T checks'); break;
+    case 'flashing': x.st='rebooting'; x.t=2; d.online=false; hist(d,'sysupgrade started, keeping config'); break;
+    case 'rebooting': if (--x.t <= 0){ x.st='checking'; } break;
+    case 'checking': {
+      if (Math.random() < fw.failRate){
+        if (Math.random() < .3){
+          x.st='bricked'; d.bricked=true; d.online=false; d.lastSeen=Date.now();
+          hist(d,'No response after sysupgrade. Needs on-site recovery.');
+          S.alerts.unshift({id:S.seq++, sn:d.sn, kind:'bricked', sev:'critical', msg:`No response after update to ${r.fw}. Needs on-site recovery.`, at:Date.now(), state:'open'});
+        } else {
+          x.st='rolledback'; d.online=true; d.lastSeen=Date.now();
+          hist(d,`Unhealthy after ${r.fw} (lora-pkt-fwd did not start). Reinstalled ${x.from}.`);
+        }
+      } else {
+        x.st='success'; d.online=true; d.fw=r.fw; d.uptimeH=0; d.lastSeen=Date.now();
+        hist(d,`Updated to ${r.fw}. Health check passed.`);
+      }
+    }
+  }
+}
+function tickRollout(r){
+  if (r.state==='soaking'){ if (--r.soak <= 0){ r.wave++; r.state='running'; } return true; }
+  if (r.state!=='running') return false;
+  const wave = waveSlice(r, r.wave);
+  const busy = wave.filter(x => !TERMINAL.has(x.st));
+  busy.forEach(x => stepDevice(r, x));
+  if (busy.length) return true;
+  const done = r.devs.slice(0, r.counts[r.wave]);
+  const proc = done.filter(x => ['success','rolledback','bricked'].includes(x.st));
+  const bad = proc.filter(x => x.st!=='success').length;
+  const rate = proc.length ? bad/proc.length*100 : 0;
+  if (!r.override && rate > r.thr){
+    r.state='paused'; r.reason=`Auto-paused after wave ${r.wave+1}: ${bad} of ${proc.length} updated gateways failed (${rate.toFixed(0)}%, limit ${r.thr}%).`;
+    toast(`${r.id} auto-paused: failure rate ${rate.toFixed(0)}% is above ${r.thr}%.`);
+  } else if (r.wave >= r.counts.length-1){
+    r.state='completed'; r.finished=Date.now(); toast(`${r.id} completed.`);
+  } else { r.state='soaking'; r.soak=5; r.override=false; }
+  return true;
+}
+function rolloutAction(id, act){
+  const r = S.rollouts.find(x => x.id===id); if (!r) return;
+  if (act==='pause' && (r.state==='running'||r.state==='soaking')){ r.state='paused'; r.reason=`Paused by ${ROLE_NAME[S.role]}.`; }
+  else if (act==='resume' && r.state==='paused'){
+    const waveDone = waveSlice(r, r.wave).every(x => TERMINAL.has(x.st));
+    if (waveDone && r.wave >= r.counts.length-1){ r.state='completed'; r.finished=Date.now(); }
+    else if (waveDone){ r.wave++; r.state='running'; r.override=true; }
+    else { r.state='running'; }
+    r.reason='';
+  }
+  else if (act==='abort' && r.state!=='completed'){
+    r.state='aborted'; r.reason=`Aborted by ${ROLE_NAME[S.role]}. Gateways not yet started stay on their current firmware.`;
+    r.devs.forEach(x => { if (x.st==='queued') x.st='deferred'; });
+  }
+  save(); render();
+}
+
+/* ---------- Live metrics ---------- */
+let tick = 0;
+setInterval(() => {
+  tick++;
+  let changed = false;
+  S.rollouts.forEach(r => { if (tickRollout(r)) changed = true; });
+  S.devices.forEach(d => {
+    if (d.rebootT){ if (--d.rebootT <= 0){ d.online=true; d.uptimeH=0; d.lastSeen=Date.now(); hist(d,'Back online after reboot'); } changed = true; }
+  });
+  if (tick % 5 === 0){
+    S.devices.forEach(d => {
+      if (d.bricked || d.rebootT || S.rollouts.some(r => r.state==='running' && r.devs.some(x => x.sn===d.sn && ['rebooting','checking'].includes(x.st)))) return;
+      if (d.online){
+        d.temp = Math.max(35, Math.min(92, d.temp + Math.round((Math.random()-.5)*3)));
+        d.cpu = Math.max(2, Math.min(98, d.cpu + Math.round((Math.random()-.5)*8)));
+        d.temps.push(d.temp); if (d.temps.length > 30) d.temps.shift();
+        d.lastSeen = Date.now();
+        if (Math.random() < .004){ d.online=false; hist(d,'Heartbeat lost'); }
+      } else if (Math.random() < .03){ d.online=true; d.lastSeen=Date.now(); hist(d,'Heartbeat restored'); }
+      d.ifaces.forEach(i => i.up = d.online && (i.up || Math.random() < .5));
+    });
+    checkAlerts(); changed = true;
+  }
+  if (changed){ save(); if (['overview','devices','device','firmware','alerts'].includes(S.view)) render(true); }
+}, 700);
+
+/* ---------- Views ---------- */
+function vOverview(){
+  const D = S.devices;
+  const on = D.filter(d => d.online).length;
+  const attention = D.filter(d => ['critical','offline'].includes(health(d))).length;
+  const drifted = D.filter(drift).length;
+  const active = S.rollouts.filter(r => ['running','soaking','paused'].includes(r.state));
+  const rows = MODELS.map(m => {
+    const ds = D.filter(d => d.model===m.id);
+    return `<div class="board-row"><div class="lbl">${m.id}<span>${m.name}, ${ds.length} units</span></div>
+      <div class="cells">${ds.map(d => `<button class="cell ${health(d)}" data-act="open" data-sn="${d.sn}" title="${d.sn}: ${HEALTH_LABEL[health(d)]}, firmware ${d.fw}" aria-label="${d.sn} ${HEALTH_LABEL[health(d)]}"></button>`).join('')}</div></div>`;
+  }).join('');
+  const fwBars = MODELS.map(m => {
+    const ds = D.filter(d => d.model===m.id);
+    const vs = S.firmware.filter(f => f.model===m.id).map(f => ({v:f.version, n:ds.filter(d => d.fw===f.version).length}));
+    const colors = ['var(--off)','var(--accent)','var(--warn)'];
+    return `<div><div class="row small"><b>${m.id}</b><span class="spacer"></span>${vs.map((x,i) => `<span><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${colors[i]};margin-right:4px"></i>${x.v}: ${x.n}</span>`).join(' ')}</div>
+      <div class="bar" role="img" aria-label="${m.id} firmware split">${vs.map((x,i) => `<span style="width:${x.n/ds.length*100}%;background:${colors[i]}"></span>`).join('')}</div></div>`;
+  }).join('');
+  const al = openAlerts().slice(0,5);
+  return `<h1>Fleet overview</h1>
+  <p class="sub">${D.length} gateways, ${on} online. ${attention} need attention, ${drifted} have config drift. Each square below is one gateway; tap it to open.</p>
+  <section class="panel"><div class="board">${rows}</div>
+    <div class="legend"><span><i style="--c:var(--ok)"></i>Healthy</span><span><i style="--c:var(--warn)"></i>Warning</span><span><i style="--c:var(--bad)"></i>Critical</span><span><i style="--c:var(--off)"></i>Offline</span></div>
+  </section>
+  <div class="grid2">
+    <section class="panel"><h2>Firmware by model</h2><div class="bars">${fwBars}</div></section>
+    <section class="panel"><h2>Rollouts</h2>${active.length ? active.map(r => rolloutMini(r)).join('') : `<p class="muted">No rollout running. <button class="btn sm" data-act="go" data-view="firmware">Start a rollout</button></p>`}</section>
+  </div>
+  <section class="panel" style="margin-top:16px"><div class="row"><h2 style="margin:0">Open alerts</h2><span class="spacer"></span><button class="btn sm" data-act="go" data-view="alerts">All alerts</button></div>
+    ${al.length ? `<div class="scroll"><table><tbody>${al.map(alertRow).join('')}</tbody></table></div>` : '<p class="muted">No open alerts.</p>'}
+  </section>`;
+}
+function rolloutMini(r){
+  const done = r.devs.filter(x => TERMINAL.has(x.st)).length;
+  return `<div style="margin-bottom:10px"><div class="row small"><b>${r.id}</b> ${r.model} to ${r.fw} ${stateTag(r.state)}<span class="spacer"></span>${done}/${r.devs.length}</div>
+    <div class="bar" style="margin-top:4px"><span style="width:${done/r.devs.length*100}%;background:var(--busy)"></span></div></div>`;
+}
+function stateTag(st){
+  const c = {running:'busy', soaking:'busy', paused:'warn', completed:'ok', aborted:'bad'}[st] || '';
+  const l = {running:'Running', soaking:'Soak time', paused:'Paused', completed:'Completed', aborted:'Aborted'}[st];
+  return `<span class="tag ${c}">${l}</span>`;
+}
+function alertRow(a){
+  const d = dev(a.sn);
+  return `<tr><td class="nowrap"><span class="led ${a.sev==='critical'?'critical':'warning'}"></span>${a.sev==='critical'?'Critical':'Warning'}</td>
+    <td class="nowrap"><button class="linkbtn" style="color:var(--accent)" data-act="open" data-sn="${a.sn}"><span class="mono">${a.sn}</span></button><div class="small muted">${d?d.site:''}</div></td>
+    <td>${esc(a.msg)}</td><td class="nowrap small muted">${ago(a.at)}</td>
+    <td class="nowrap">${a.state==='open' ? `<button class="btn sm" data-act="ack" data-id="${a.id}" ${deny('ack')}>Acknowledge</button>` : a.state==='ack' ? '<span class="tag">Acknowledged</span>' : '<span class="tag ok">Resolved</span>'}</td></tr>`;
+}
+
+function vDevices(){
+  const f = S.filter, q = f.q.trim().toLowerCase();
+  const list = S.devices.filter(d => (!f.model || d.model===f.model) && (!f.status || (f.status==='drift' ? drift(d) : health(d)===f.status))
+    && (!q || d.sn.toLowerCase().includes(q) || d.site.toLowerCase().includes(q) || d.ifaces.some(i => i.id.toLowerCase().includes(q))));
+  return `<h1>Devices</h1><p class="sub">Search by serial number, site, MAC, IMEI or ICCID.</p>
+  <div class="row" style="margin-bottom:14px">
+    <input type="search" id="f-q" data-bind="filter.q" value="${esc(f.q)}" placeholder="Search SN, site, MAC…" style="flex:1;min-width:200px" aria-label="Search">
+    <select id="f-model" data-bind="filter.model" aria-label="Model"><option value="">All models</option>${MODELS.map(m => `<option ${f.model===m.id?'selected':''}>${m.id}</option>`).join('')}</select>
+    <select id="f-status" data-bind="filter.status" aria-label="Status"><option value="">Any status</option>${['healthy','warning','critical','offline'].map(s => `<option value="${s}" ${f.status===s?'selected':''}>${HEALTH_LABEL[s]}</option>`).join('')}<option value="drift" ${f.status==='drift'?'selected':''}>Config drift</option></select>
+  </div>
+  <section class="panel" style="padding:4px 6px"><div class="scroll"><table>
+    <thead><tr><th>Status</th><th>Serial number</th><th>Model</th><th>Site</th><th>Firmware</th><th>Config</th><th>Temp</th><th>Last seen</th></tr></thead>
+    <tbody>${list.map(d => `<tr class="click" data-act="open" data-sn="${d.sn}" tabindex="0">
+      <td class="nowrap"><span class="led ${health(d)}"></span>${HEALTH_LABEL[health(d)]}</td>
+      <td class="nowrap mono">${d.sn}</td><td class="nowrap">${d.model} <span class="muted small">rev ${d.hwRev}</span></td><td class="nowrap">${d.site}</td>
+      <td class="nowrap mono">${d.fw}</td>
+      <td class="nowrap">v${d.cfgVer} ${drift(d)?'<span class="tag warn">Drift</span>':''}</td>
+      <td class="nowrap">${d.online?d.temp+' °C':'–'}</td><td class="nowrap small muted">${ago(d.lastSeen)}</td></tr>`).join('') || `<tr><td colspan="8" class="empty">No gateways match these filters.</td></tr>`}</tbody>
+  </table></div></section>
+  <p class="small muted">${list.length} of ${S.devices.length} gateways shown.</p>`;
+}
+
+function spark(vals){
+  const w = 260, h = 48, min = Math.min(...vals) - 2, max = Math.max(...vals) + 2;
+  const pts = vals.map((v,i) => `${(i/(vals.length-1)*w).toFixed(1)},${(h - (v-min)/(max-min)*h).toFixed(1)}`).join(' ');
+  return `<svg class="spark" width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="Temperature trend"><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+}
+function vDevice(){
+  const d = dev(S.sel); if (!d) { S.view='devices'; return vDevices(); }
+  const m = model(d.model), h = health(d), cfg = S.configs[d.model];
+  const desired = cfg.versions.find(v => v.v===cfg.desired);
+  const inRoll = S.rollouts.find(r => ['running','soaking','paused'].includes(r.state) && r.devs.some(x => x.sn===d.sn && !TERMINAL.has(x.st)));
+  const rx = inRoll && inRoll.devs.find(x => x.sn===d.sn);
+  return `<button class="back" data-act="go" data-view="devices">‹ All devices</button>
+  <h1 class="mono" style="font-size:24px">${d.sn}</h1>
+  <p class="sub"><span class="led ${h}"></span>${HEALTH_LABEL[h]}. ${d.model} ${m.name} at ${d.site}. Last seen ${ago(d.lastSeen)}.</p>
+  ${d.bricked ? `<div class="note bad">This gateway did not come back after a sysupgrade. It needs on-site recovery (accepted risk until A/B partitions are added).</div>` : ''}
+  ${rx ? `<div class="note">In rollout ${inRoll.id} to ${inRoll.fw}: ${STATE_LABEL[rx.st]}${rx.st==='downloading'?' '+Math.round(rx.pct)+'%':''}.</div>` : ''}
+  <div class="row" style="margin-bottom:16px">
+    <button class="btn" data-act="reboot" data-sn="${d.sn}" ${deny('remote')} ${!d.online?'disabled':''}>Reboot</button>
+    <button class="btn" data-act="logs" data-sn="${d.sn}" ${deny('remote')} ${!d.online?'disabled':''}>Pull logs</button>
+    <button class="btn" data-act="ping" data-sn="${d.sn}" ${deny('remote')} ${!d.online?'disabled':''}>Run ping test</button>
+  </div>
+  ${S.logs && S.logs.sn===d.sn ? `<section class="panel"><div class="row"><h2 style="margin:0">${S.logs.title}</h2><span class="spacer"></span><button class="btn sm" data-act="closelogs">Close</button></div><pre class="code" style="margin-top:10px">${esc(S.logs.text)}</pre></section>` : ''}
+  <div class="grid2">
+    <section class="panel"><h2>Device info</h2><dl class="kv">
+      <dt>Serial number</dt><dd class="mono">${d.sn}</dd><dt>Model</dt><dd>${d.model} (${m.name})</dd><dt>Hardware rev</dt><dd>${d.hwRev}</dd>
+      <dt>SoC</dt><dd>${m.soc}</dd><dt>RAM, flash</dt><dd>${m.ram} MB, ${m.flash} MB</dd><dt>OS</dt><dd>${m.os} (${m.arch})</dd>
+      <dt>Firmware</dt><dd class="mono">${d.fw}</dd><dt>Uptime</dt><dd>${d.online ? (d.uptimeH >= 24 ? Math.floor(d.uptimeH/24)+' d '+(d.uptimeH%24)+' h' : d.uptimeH+' h') : '–'}</dd>
+    </dl></section>
+    <section class="panel"><h2>Health</h2><dl class="kv">
+      <dt>Temperature</dt><dd>${d.online?d.temp+' °C':'–'}</dd><dt>CPU</dt><dd>${d.online?d.cpu+'%':'–'}</dd><dt>RAM used</dt><dd>${d.ram}%</dd>
+      <dt>/tmp free</dt><dd>${d.tmpFree} MB ${d.tmpFree<8?'<span class="tag warn">Too small for sysupgrade</span>':''}</dd>
+      ${d.rssi!==null?`<dt>LTE signal</dt><dd>${d.rssi} dBm</dd>`:''}
+    </dl><div class="small muted" style="margin-top:10px">Temperature, last 30 readings</div>${spark(d.temps)}</section>
+  </div>
+  <section class="panel" style="margin-top:16px"><h2>Hardware interfaces</h2><div class="scroll"><table>
+    <thead><tr><th>Type</th><th>Name</th><th>Identifier</th><th>Link</th></tr></thead>
+    <tbody>${d.ifaces.map(i => `<tr><td class="nowrap">${IFNAME[i.type]}</td><td class="mono nowrap">${i.name}</td><td class="mono">${i.id}</td><td>${i.up?'<span class="tag ok">Up</span>':'<span class="tag">Down</span>'}</td></tr>`).join('')}</tbody>
+  </table></div></section>
+  <div class="grid2">
+    <section class="panel"><h2>Packages</h2><div class="scroll"><table>
+      <thead><tr><th>Package</th><th>Installed</th><th>Latest</th></tr></thead>
+      <tbody>${Object.entries(d.pkgs).map(([n,v]) => { const p = S.packages.find(x => x.name===n); return `<tr><td class="mono">${n}</td><td class="mono">${v}</td><td>${v===p.version?'<span class="tag ok">Up to date</span>':`<span class="mono">${p.version}</span>`}</td></tr>`; }).join('')}</tbody>
+    </table></div></section>
+    <section class="panel"><h2>Config</h2><p style="margin-top:0">Desired v${cfg.desired}, reported v${d.cfgVer} ${drift(d)?'<span class="tag warn">Drift</span>':'<span class="tag ok">In sync</span>'}</p>
+      <div class="small muted" style="margin-bottom:6px">Rendered for this gateway (secrets hidden)</div>
+      <pre class="code" style="max-height:220px">${esc(render_vars(d, desired.text))}</pre></section>
+  </div>
+  <section class="panel" style="margin-top:16px"><h2>History</h2><div class="scroll"><table><tbody>
+    ${d.hist.map(e => `<tr><td class="nowrap small muted">${when(e.t)}</td><td>${esc(e.msg)}</td></tr>`).join('')}
+  </tbody></table></div></section>`;
+}
+
+function vFirmware(){
+  const f = S.form;
+  const fws = S.firmware.filter(x => x.model===f.model);
+  if (!fws.some(x => x.version===f.fw)) f.fw = fws[0].version;
+  const target = fwOf(f.model, f.fw);
+  const ds = S.devices.filter(d => d.model===f.model);
+  const need = ds.filter(d => d.fw!==f.fw && !d.bricked);
+  const lowTmp = need.filter(d => d.tmpFree < target.sizeMB).length;
+  const off = need.filter(d => !d.online).length;
+  const pcts = f.waves.split(',').map(x => parseFloat(x)).filter(x => x > 0);
+  let prev = 0;
+  const plan = pcts.map(p => { const c = Math.min(need.length, Math.max(prev+1, Math.ceil(need.length*p/100))); const n = c - prev; prev = c; return n; }).filter(n => n > 0);
+  return `<h1>Firmware and rollouts</h1>
+  <p class="sub">Updates use OpenWrt sysupgrade in staged waves. A rollout pauses itself when failures go over the limit. A/B dual-partition updates are on the to-do list.</p>
+  <section class="panel"><h2>Start a rollout</h2>
+    <div class="row" style="align-items:flex-end">
+      <label class="field">Model<select id="r-model" data-bind="form.model">${MODELS.map(m => `<option ${f.model===m.id?'selected':''}>${m.id}</option>`).join('')}</select></label>
+      <label class="field">Target firmware<select id="r-fw" data-bind="form.fw">${fws.map(x => `<option value="${x.version}" ${f.fw===x.version?'selected':''} ${x.blocked?'disabled':''}>${x.version} (${x.channel}${x.blocked?', blocked':''})</option>`).join('')}</select></label>
+      <label class="field">Waves, % of gateways<input type="text" id="r-waves" data-bind="form.waves" value="${esc(f.waves)}" style="width:150px"></label>
+      <label class="field">Pause if failures exceed<span class="row" style="gap:6px"><input type="number" id="r-thr" data-bind="form.thr" value="${f.thr}" min="1" max="100" style="width:80px">%</span></label>
+      <button class="btn primary" data-act="start" ${deny('rollout')} ${!need.length?'disabled':''}>Start rollout</button>
+    </div>
+    <p class="small" style="margin:12px 0 0">${need.length ? `${need.length} of ${ds.length} ${f.model} gateways need ${f.fw}. Wave sizes: ${plan.join(', ')} gateways. Healthy gateways go first.` : `All ${f.model} gateways already run ${f.fw}.`}
+      ${lowTmp ? ` ${lowTmp} will be skipped: /tmp is smaller than the ${target.sizeMB} MB image.` : ''}${off ? ` ${off} are offline and will be deferred.` : ''}</p>
+    ${target.channel==='beta' ? `<div class="note">${f.fw} is a beta build. In this sample it has a high failure rate, so you can watch the auto-pause work.</div>` : ''}
+    <p class="small muted" style="margin:8px 0 0">Maintenance window 02:00 to 04:00 site time. Ignored in this sample so rollouts run now.</p>
+  </section>
+  ${S.rollouts.map(vRollout).join('')}
+  <section class="panel"><h2>Firmware images</h2><div class="scroll"><table>
+    <thead><tr><th>Model</th><th>Version</th><th>Channel</th><th>Size</th><th>Image file</th><th>SHA-256</th><th>Gateways</th><th></th></tr></thead>
+    <tbody>${S.firmware.map(x => `<tr><td class="nowrap">${x.model}</td><td class="mono nowrap">${x.version}</td>
+      <td>${x.channel==='beta'?'<span class="tag warn">Beta</span>':'<span class="tag">Stable</span>'} ${x.blocked?'<span class="tag bad">Blocked</span>':''}</td>
+      <td class="nowrap">${x.sizeMB} MB</td><td class="mono small">${x.file}</td><td class="mono small" title="${x.sha}">${x.sha.slice(0,12)}…</td>
+      <td>${S.devices.filter(d => d.model===x.model && d.fw===x.version).length}</td>
+      <td><button class="btn sm" data-act="block" data-model="${x.model}" data-v="${x.version}" ${deny('firmware')}>${x.blocked?'Unblock':'Block'}</button></td></tr>`).join('')}</tbody>
+  </table></div></section>`;
+}
+function vRollout(r){
+  const c = k => r.devs.filter(x => x.st===k).length;
+  const inflight = r.devs.filter(x => !TERMINAL.has(x.st) && x.st!=='queued').length;
+  const waves = r.counts.map((_,i) => {
+    const w = waveSlice(r, i);
+    const cls = i < r.wave || (i===r.wave && w.every(x => TERMINAL.has(x.st))) ? 'done' : i===r.wave ? 'now' : '';
+    return `<div class="wave ${cls}"><div class="wl">Wave ${i+1}, ${w.length} gateway${w.length>1?'s':''}</div><div class="cells">${w.map(x => `<button class="cell s-${x.st}" data-act="open" data-sn="${x.sn}" title="${x.sn}: ${STATE_LABEL[x.st]}${x.note?' ('+x.note+')':''}" aria-label="${x.sn} ${STATE_LABEL[x.st]}">${x.st==='downloading'?`<span class="pct" style="width:${x.pct}%"></span>`:''}</button>`).join('')}</div></div>`;
+  }).join('');
+  const live = ['running','soaking','paused'].includes(r.state);
+  return `<section class="panel">
+    <div class="row"><h2 style="margin:0">${r.id}: ${r.model} to <span class="mono">${r.fw}</span></h2>${stateTag(r.state)}<span class="spacer"></span>
+      ${live ? `${r.state==='paused' ? `<button class="btn sm primary" data-act="ra" data-id="${r.id}" data-a="resume" ${deny('rollout')}>Resume</button>` : `<button class="btn sm" data-act="ra" data-id="${r.id}" data-a="pause" ${deny('rollout')}>Pause</button>`}
+      <button class="btn sm danger" data-act="ra" data-id="${r.id}" data-a="abort" ${deny('rollout')}>Abort</button>` : ''}</div>
+    <p class="small muted" style="margin:4px 0 0">Started ${when(r.created)} by ${r.by}. Pause limit ${r.thr}% failures.${r.state==='soaking'?' Soak time before the next wave.':''}</p>
+    ${r.reason ? `<div class="note ${r.state==='aborted'?'bad':''}">${esc(r.reason)}</div>` : ''}
+    <div class="waves">${waves}</div>
+    <div class="stat"><span><b>${c('success')}</b>Updated</span><span><b>${inflight}</b>In progress</span><span><b>${c('rolledback')}</b>Rolled back</span><span><b>${c('bricked')}</b>Need on-site recovery</span><span><b>${c('skipped')+c('deferred')}</b>Skipped or deferred</span><span><b>${c('queued')}</b>Waiting</span></div>
+    <div class="legend"><span><i style="--c:var(--idle)"></i>Waiting</span><span><i style="--c:var(--busy)"></i>In progress</span><span><i style="--c:var(--ok)"></i>Updated</span><span><i style="--c:var(--warn)"></i>Rolled back</span><span><i style="--c:var(--bad)"></i>Needs on-site recovery</span><span><i style="background:repeating-linear-gradient(45deg,var(--idle) 0 3px,transparent 3px 6px)"></i>Skipped or deferred</span></div>
+  </section>`;
+}
+
+function vPackages(){
+  return `<h1>Packages</h1><p class="sub">Signed OpenWrt .ipk packages. Each package lists the models it is built for; the agent installs only matching packages with opkg.</p>
+  <section class="panel" style="padding:4px 6px"><div class="scroll"><table>
+    <thead><tr><th>Package</th><th>Latest</th><th>Channel</th><th>Models</th><th>Up to date</th><th>Outdated</th><th></th></tr></thead>
+    <tbody>${S.packages.map(p => {
+      const ds = S.devices.filter(d => d.pkgs[p.name]);
+      const old = ds.filter(d => d.pkgs[p.name]!==p.version);
+      return `<tr><td><span class="mono">${p.name}</span><div class="small muted">${p.desc}</div></td><td class="mono">${p.version}</td>
+        <td>${p.channel==='beta'?'<span class="tag warn">Beta</span>':'<span class="tag">Stable</span>'}</td><td class="nowrap">${p.models.join(', ')}</td>
+        <td>${ds.length-old.length}</td><td>${old.length?`<span class="tag warn">${old.length}</span>`:'0'}</td>
+        <td><button class="btn sm" data-act="pkgup" data-name="${p.name}" ${deny('packages')} ${!old.length?'disabled':''}>Update outdated</button></td></tr>`;
+    }).join('')}</tbody></table></div></section>
+  <p class="small muted">Offline gateways get the update when they reconnect.</p>`;
+}
+
+function diffLines(a, b){
+  const A = a.split('\n'), B = b.split('\n'), n = A.length, m = B.length;
+  const L = Array.from({length:n+1}, () => new Array(m+1).fill(0));
+  for (let i = n-1; i >= 0; i--) for (let j = m-1; j >= 0; j--) L[i][j] = A[i]===B[j] ? L[i+1][j+1]+1 : Math.max(L[i+1][j], L[i][j+1]);
+  const out = []; let i = 0, j = 0;
+  while (i < n && j < m){ if (A[i]===B[j]){ out.push(['=',A[i]]); i++; j++; } else if (L[i+1][j] >= L[i][j+1]) out.push(['-',A[i++]]); else out.push(['+',B[j++]]); }
+  while (i < n) out.push(['-',A[i++]]); while (j < m) out.push(['+',B[j++]]);
+  return out.map(([k,l]) => k==='+' ? `<span class="add">+ ${esc(l)}</span>` : k==='-' ? `<span class="del">- ${esc(l)}</span>` : `  ${esc(l)}\n`).join('');
+}
+function validateUci(text){
+  const lines = text.split('\n');
+  for (let i = 0; i < lines.length; i++){
+    const l = lines[i];
+    if (!l.trim()) continue;
+    if (/^config [a-z_]+( '[^']*')?$/.test(l)) continue;
+    if (/^\s+(option|list) [a-z_0-9]+ '[^']*'$/.test(l)) continue;
+    return `Line ${i+1} is not valid UCI: "${l.trim()}". Use config, option or list with values in single quotes.`;
+  }
+  if (!/config gateway 'main'/.test(text)) return "The config must keep the section config gateway 'main'.";
+  return '';
+}
+function vConfig(){
+  const m = S.cfgModel, c = S.configs[m];
+  const latest = c.versions[c.versions.length-1];
+  const sel = c.versions.find(v => v.v===S.cfgSel) || latest;
+  const prev = c.versions.find(v => v.v===sel.v-1);
+  const ds = S.devices.filter(d => d.model===m);
+  const drifted = ds.filter(drift);
+  const e = S.editing;
+  return `<h1>Configuration</h1><p class="sub">One UCI template per model, with variables filled per gateway. Every save is a new version. Pushing sets the version all ${m} gateways should run.</p>
+  <div class="row" style="margin-bottom:14px"><div class="seg" role="group" aria-label="Model">${MODELS.map(x => `<button data-act="cfgmodel" data-m="${x.id}" aria-pressed="${x.id===m}">${x.id}</button>`).join('')}</div></div>
+  <section class="panel"><div class="row"><div><b>Target version for ${m}: v${c.desired}</b><div class="small muted">${ds.length-drifted.length} of ${ds.length} gateways in sync${drifted.length?`, ${drifted.length} drifted`:''}.</div></div><span class="spacer"></span>
+    <button class="btn primary" data-act="push" ${deny('config')} ${latest.v===c.desired && !drifted.length?'disabled':''}>Push v${latest.v} to ${m}</button></div></section>
+  ${e ? `<section class="panel"><h2>New version v${latest.v+1}</h2>
+      <label class="field" style="margin-bottom:10px">What changed<input type="text" id="e-note" data-bind="editing.note" value="${esc(e.note)}" placeholder="For example: change LoRa region"></label>
+      <textarea id="e-text" data-bind="editing.text" spellcheck="false" aria-label="UCI config">${esc(e.text)}</textarea>
+      ${e.err ? `<div class="note bad">${esc(e.err)}</div>` : ''}
+      <div class="row" style="margin-top:10px"><button class="btn primary" data-act="cfgsave">Check and save</button><button class="btn" data-act="cfgcancel">Cancel</button>
+      <span class="small muted">Variables: {{device.sn}}, {{site.name}}, {{site.ntp_server}}, {{site.apn}}, {{secret.sim_pin}}</span></div></section>` : ''}
+  <div class="grid2" style="grid-template-columns:minmax(0,1fr) minmax(0,2.2fr)">
+    <section class="panel"><div class="row" style="margin-bottom:10px"><h2 style="margin:0">Versions</h2><span class="spacer"></span><button class="btn sm" data-act="cfgnew" ${deny('config')} ${e?'disabled':''}>New version</button></div>
+      <div class="vlist">${c.versions.slice().reverse().map(v => `<button class="vitem" data-act="cfgsel" data-v="${v.v}" aria-pressed="${v.v===sel.v}"><b>v${v.v}</b> ${v.v===c.desired?'<span class="tag ok">Target</span>':''}<div class="small muted">${esc(v.note)}</div><div class="small muted">${v.by}, ${v.at}</div></button>`).join('')}</div></section>
+    <section class="panel"><h2>v${sel.v} ${prev?`compared with v${prev.v}`:''}</h2><pre class="code">${prev ? diffLines(prev.text, sel.text) : esc(sel.text)}</pre></section>
+  </div>`;
+}
+
+function vAlerts(){
+  const open = S.alerts.filter(a => a.state!=='resolved');
+  const closed = S.alerts.filter(a => a.state==='resolved').slice(0,15);
+  return `<h1>Alerts</h1><p class="sub">Raised from gateway heartbeats and metrics. Alerts close on their own when the condition clears.</p>
+  <section class="panel" style="padding:10px 12px"><h2>Open (${open.length})</h2>${open.length ? `<div class="scroll"><table><tbody>${open.map(alertRow).join('')}</tbody></table></div>` : '<p class="muted">No open alerts.</p>'}</section>
+  <section class="panel"><h2>Alert rules</h2><div class="scroll"><table><thead><tr><th>Rule</th><th>Severity</th><th>Applies to</th></tr></thead><tbody>
+    <tr><td>No heartbeat for more than 10 minutes</td><td><span class="tag bad">Critical</span></td><td>All models</td></tr>
+    <tr><td>Temperature at or above 80 °C</td><td><span class="tag bad">Critical</span></td><td>All models</td></tr>
+    <tr><td>RAM use at or above 90%</td><td><span class="tag warn">Warning</span></td><td>All models</td></tr>
+    <tr><td>No response after firmware update</td><td><span class="tag bad">Critical</span></td><td>All models</td></tr>
+  </tbody></table></div><p class="small muted" style="margin-bottom:0">Email, Slack and webhook delivery are not wired up in this sample.</p></section>
+  ${closed.length ? `<section class="panel" style="padding:10px 12px"><h2>Recently resolved</h2><div class="scroll"><table><tbody>${closed.map(alertRow).join('')}</tbody></table></div></section>` : ''}`;
+}
+
+const VIEWS = {overview:vOverview, devices:vDevices, device:vDevice, firmware:vFirmware, packages:vPackages, config:vConfig, alerts:vAlerts};
+const NAV = [['overview','Overview'],['devices','Devices'],['firmware','Firmware and rollouts'],['packages','Packages'],['config','Configuration'],['alerts','Alerts']];
+
+/* ---------- Render with focus kept ---------- */
+const main = document.getElementById('main');
+function render(fromTimer){
+  const a = document.activeElement;
+  if (fromTimer && a && a.tagName==='TEXTAREA') return;
+  if (fromTimer && a && a.tagName==='SELECT' && main.contains(a)) return;
+  const id = a && a.id; let ss = null, se = null;
+  try { ss = a.selectionStart; se = a.selectionEnd; } catch(e){}
+  const refocus = a && a.dataset && a.dataset.sn && a.dataset.act==='open' ? a.dataset.sn : null;
+  main.innerHTML = (VIEWS[S.view] || vOverview)();
+  const cur = S.view==='device' ? 'devices' : S.view;
+  const n = openAlerts().filter(x => x.state==='open').length;
+  document.getElementById('nav').innerHTML = NAV.map(([k,l]) => `<button data-act="go" data-view="${k}" ${cur===k?'aria-current="page"':''}>${l}${k==='alerts'&&n?`<span class="count">${n}</span>`:''}</button>`).join('');
+  document.getElementById('role').value = S.role;
+  if (id){ const el = document.getElementById(id); if (el){ el.focus({preventScroll:true}); try { if (ss!==null) el.setSelectionRange(ss,se); } catch(e){} } }
+  else if (fromTimer && refocus){ const el = main.querySelector(`[data-act="open"][data-sn="${refocus}"]`); if (el) el.focus({preventScroll:true}); }
+}
+
+/* ---------- Events ---------- */
+const ACT = {
+  go: b => { S.view = b.dataset.view; S.logs = null; save(); render(); window.scrollTo(0,0); },
+  open: b => { S.sel = b.dataset.sn; S.view = 'device'; S.logs = null; save(); render(); window.scrollTo(0,0); },
+  start: () => startRollout(),
+  ra: b => rolloutAction(b.dataset.id, b.dataset.a),
+  ack: b => { const a = S.alerts.find(x => x.id===+b.dataset.id); if (a){ a.state='ack'; a.by=ROLE_NAME[S.role]; toast('Alert acknowledged.'); } save(); render(); },
+  block: b => { const f = fwOf(b.dataset.model, b.dataset.v); f.blocked = !f.blocked; toast(`${f.model} ${f.version} ${f.blocked?'blocked':'unblocked'}.`); save(); render(); },
+  reboot: b => { const d = dev(b.dataset.sn); d.online=false; d.rebootT=6; hist(d,`Reboot requested by ${ROLE_NAME[S.role]}`); toast(`Reboot sent to ${d.sn}.`); save(); render(); },
+  logs: b => { const d = dev(b.dataset.sn); const t = new Date();
+    const ts = k => new Date(t - k*4000).toString().slice(0,24);
+    S.logs = {sn:d.sn, title:'Logs (logread, last 8 lines)', text:[
+      `${ts(7)} daemon.info gw-agent[1402]: heartbeat sent, rtt 84 ms`,
+      `${ts(6)} daemon.info lora_pkt_fwd[1511]: PUSH_DATA acknowledged`,
+      `${ts(5)} kern.info kernel: [${(d.uptimeH*3600).toFixed(0)}] eth0: link up (1000Mbps/Full duplex)`,
+      `${ts(4)} daemon.notice netifd: Interface 'wan' is now up`,
+      `${ts(3)} daemon.info gw-agent[1402]: config v${d.cfgVer} hash ok`,
+      `${ts(2)} daemon.info gw-agent[1402]: metrics published (temp=${d.temp}C cpu=${d.cpu}% ram=${d.ram}%)`,
+      `${ts(1)} daemon.info dnsmasq[1100]: read /etc/hosts - 4 names`,
+      `${ts(0)} daemon.info gw-agent[1402]: log upload requested by console`].join('\n')};
+    hist(d,'Logs pulled'); save(); render(); },
+  ping: b => { const d = dev(b.dataset.sn); const base = 30 + Math.round(Math.random()*40);
+    S.logs = {sn:d.sn, title:'Ping test to mqtt.fleet.example.com', text:[
+      'PING mqtt.fleet.example.com (203.0.113.20): 56 data bytes',
+      ...[0,1,2,3].map(i => `64 bytes from 203.0.113.20: seq=${i} ttl=54 time=${(base+Math.random()*12).toFixed(1)} ms`),
+      '', '--- mqtt.fleet.example.com ping statistics ---', '4 packets transmitted, 4 packets received, 0% packet loss'].join('\n')};
+    hist(d,'Ping test run'); save(); render(); },
+  closelogs: () => { S.logs = null; render(); },
+  pkgup: b => { const p = S.packages.find(x => x.name===b.dataset.name); let n = 0, w = 0;
+    S.devices.forEach(d => { if (d.pkgs[p.name] && d.pkgs[p.name]!==p.version){ if (d.online){ d.pkgs[p.name]=p.version; hist(d,`opkg upgrade ${p.name} to ${p.version}`); n++; } else w++; } });
+    toast(`${p.name} ${p.version} installed on ${n} gateways${w?`; ${w} offline will update when back`:''}.`); save(); render(); },
+  cfgmodel: b => { S.cfgModel = b.dataset.m; S.cfgSel = S.configs[S.cfgModel].desired; S.editing = null; save(); render(); },
+  cfgsel: b => { S.cfgSel = +b.dataset.v; render(); },
+  cfgnew: () => { const c = S.configs[S.cfgModel]; S.editing = {text:c.versions[c.versions.length-1].text, note:'', err:''}; render(); document.getElementById('e-text')?.focus(); },
+  cfgcancel: () => { S.editing = null; render(); },
+  cfgsave: () => { const e = S.editing, c = S.configs[S.cfgModel];
+    const err = validateUci(e.text); if (err){ e.err = err; render(); return; }
+    if (!e.note.trim()){ e.err = 'Add a short note about what changed.'; render(); return; }
+    if (e.text===c.versions[c.versions.length-1].text){ e.err = 'Nothing changed from the latest version.'; render(); return; }
+    const v = c.versions.length+1; c.versions.push({v, by:ROLE_NAME[S.role], at:new Date().toISOString().slice(0,10), note:e.note.trim(), text:e.text});
+    S.cfgSel = v; S.editing = null; toast(`Saved v${v}. Push it to send it to the gateways.`); save(); render(); },
+  push: () => { const m = S.cfgModel, c = S.configs[m]; c.desired = c.versions.length; S.cfgSel = c.desired; let n = 0, w = 0;
+    S.devices.filter(d => d.model===m).forEach(d => { if (d.cfgVer===c.desired) return; if (d.online){ d.cfgVer = c.desired; hist(d,`Config v${c.desired} applied, services reloaded`); n++; } else w++; });
+    toast(`Config v${c.desired} applied on ${n} ${m} gateways${w?`; ${w} offline stay drifted until they reconnect`:''}.`); save(); render(); },
+  reset: () => { if (!confirm('Reset all sample data?')) return; try { localStorage.removeItem(STORE); } catch(e){} S = initData(); checkAlerts(); render(); toast('Sample data reset.'); }
+};
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const f = ACT[b.dataset.act]; if (f){ e.preventDefault(); f(b); }
+});
+document.addEventListener('keydown', e => {
+  if ((e.key==='Enter'||e.key===' ') && e.target.matches('tr[data-act]')){ e.preventDefault(); ACT[e.target.dataset.act](e.target); }
+});
+function bind(e){
+  const el = e.target, path = el.dataset && el.dataset.bind; if (!path) return;
+  const [o,k] = path.split('.'); if (!S[o]) return;
+  S[o][k] = el.type==='number' ? +el.value : el.value;
+  if (o==='editing'){ S.editing.err=''; return; }
+  save(); render();
+}
+document.addEventListener('input', e => { if (e.target.tagName!=='SELECT') bind(e); });
+document.addEventListener('change', e => { if (e.target.tagName==='SELECT' && e.target.id!=='role') bind(e); });
+document.getElementById('role').addEventListener('change', e => { S.role = e.target.value; S.editing = null; toast(`Now acting as ${ROLE_NAME[S.role]}.`); save(); render(); });
+
+load();
+render();
+</script>
+</body>
+</html>

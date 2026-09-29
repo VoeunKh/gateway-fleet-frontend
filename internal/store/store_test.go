@@ -147,3 +147,55 @@ func TestCountDevices(t *testing.T) {
 		t.Errorf("n=%d err=%v", n, err)
 	}
 }
+
+func TestUsersSessionsAudit(t *testing.T) {
+	s := openTemp(t)
+	ctx := context.Background()
+	now := time.UnixMilli(1790000000000).UTC()
+	id, err := s.CreateUser(ctx, "alice", "hash", "admin", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.CreateUser(ctx, "alice", "hash", "admin", now); !errors.Is(err, ErrUserExists) {
+		t.Errorf("duplicate: %v", err)
+	}
+	if _, err := s.CreateUser(ctx, "bob", "hash", "root", now); err == nil {
+		t.Error("invalid role accepted by CHECK constraint")
+	}
+	u, err := s.UserByUsername(ctx, "alice")
+	if err != nil || u.ID != id || u.Role != "admin" || !u.CreatedAt.Equal(now) {
+		t.Fatalf("user %+v %v", u, err)
+	}
+	if _, err := s.UserByUsername(ctx, "nobody"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("missing user: %v", err)
+	}
+	if err := s.CreateSession(ctx, "h1", "c1", id, now, now.Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CreateSession(ctx, "h2", "c2", id, now, now.Add(time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	ss, err := s.SessionByTokenHash(ctx, "h1", now)
+	if err != nil || ss.CSRF != "c1" || ss.User.Username != "alice" {
+		t.Fatalf("session %+v %v", ss, err)
+	}
+	if _, err := s.SessionByTokenHash(ctx, "h2", now.Add(time.Minute)); !errors.Is(err, ErrNotFound) {
+		t.Errorf("expired session: %v", err)
+	}
+	if n, err := s.DeleteExpiredSessions(ctx, now.Add(2*time.Minute)); err != nil || n != 1 {
+		t.Errorf("expired deleted %d %v", n, err)
+	}
+	if err := s.DeleteSession(ctx, "h1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.SessionByTokenHash(ctx, "h1", now); !errors.Is(err, ErrNotFound) {
+		t.Errorf("deleted session: %v", err)
+	}
+	if err := s.Audit(ctx, AuditEntry{At: now.Add(time.Second), Action: "system.test"}); err != nil {
+		t.Fatal(err)
+	}
+	log, err := s.AuditLog(ctx, 10)
+	if err != nil || len(log) != 4 || log[0].Action != "system.test" || log[0].UserID != "" || log[3].Action != "user.create" {
+		t.Errorf("audit %+v %v", log, err)
+	}
+}
